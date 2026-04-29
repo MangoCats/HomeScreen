@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Periodically casts the dashboard image to a Google Cast device."""
+"""Periodically casts the dashboard MJPEG stream to a Google Cast device."""
 
 import logging
 import os
 import time
+from urllib.parse import urlparse, urlunparse
 
 import pychromecast
+from pychromecast.controllers.media import STREAM_TYPE_LIVE
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -13,6 +15,10 @@ log = logging.getLogger(__name__)
 DEVICE_NAME   = os.environ["CAST_DEVICE"]
 DASHBOARD_URL = os.environ["DASHBOARD_URL"]
 INTERVAL      = int(os.environ.get("CAST_INTERVAL", "55"))
+
+# Derive MJPEG URL from the configured host:port regardless of path in DASHBOARD_URL
+_parsed = urlparse(DASHBOARD_URL)
+MJPEG_URL = urlunparse(_parsed._replace(path="/dashboard.mjpeg", query=""))
 
 
 def connect() -> tuple[pychromecast.Chromecast, object]:
@@ -37,9 +43,13 @@ if __name__ == "__main__":
                 if browser is not None:
                     browser.stop_discovery()
                 cast, browser = connect()
-            url = f"{DASHBOARD_URL}?t={int(time.time())}"
-            cast.media_controller.play_media(url, "image/png")
-            log.info("Cast → %s", url)
+            mc = cast.media_controller
+            if mc.status.player_state not in ("PLAYING", "BUFFERING"):
+                url = f"{MJPEG_URL}?t={int(time.time())}"
+                mc.play_media(url, "image/jpeg", stream_type=STREAM_TYPE_LIVE)
+                log.info("Cast → %s", url)
+            else:
+                log.info("MJPEG stream active")
         except Exception as exc:
             log.error("Cast failed: %s", exc)
             cast = None

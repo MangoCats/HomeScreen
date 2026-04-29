@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 """HTTP server that serves a freshly rendered dashboard image on every request."""
 
+import io
 import logging
+import time
 import traceback
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
+
+from PIL import Image
 
 import dashboard
 
 HOST = "0.0.0.0"
 PORT = 2001
+MJPEG_BOUNDARY = "frame"
+MJPEG_INTERVAL = 30  # seconds between MJPEG frames
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+
+def _to_jpeg(png_bytes: bytes) -> bytes:
+    buf = io.BytesIO()
+    Image.open(io.BytesIO(png_bytes)).save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -20,14 +32,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if urlparse(self.path).path not in ("/", "/dashboard.png"):
+        path = urlparse(self.path).path
+        if path == "/dashboard.mjpeg":
+            self._serve_mjpeg()
+        elif path in ("/", "/dashboard.png"):
+            self._serve_png()
+        else:
             self.send_response(404)
             self.end_headers()
-            return
 
+    def _serve_png(self):
         try:
             image_bytes = dashboard.generate()
-
             self.send_response(200)
             self.send_header("Content-Type", "image/png")
             self.send_header("Content-Length", str(len(image_bytes)))
@@ -40,7 +56,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.end_headers()
 
+    def _serve_mjpeg(self):
+        self.send_response(200)
+        self.send_header("Content-Type", f"multipart/x-mixed-replace;boundary={MJPEG_BOUNDARY}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        log.info("MJPEG stream started")
+        try:
+            while True:
+                jpeg_bytes = _to_jpeg(dashboard.generate())
+                self.wfile.write(
+                    f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
+                    f"Content-Length: {len(jpeg_bytes)}\r\n\r\n".encode()
+                    + jpeg_bytes + b"\r\n"
+                )
+                self.wfile.flush()
+                log.info("MJPEG frame (%d bytes)", len(jpeg_bytes))
+                time.sleep(MJPEG_INTERVAL)
+        except Exception:
+            log.info("MJPEG stream ended")
+
 
 if __name__ == "__main__":
-    log.info("Dashboard server on http://%s:%d/dashboard.png", HOST, PORT)
-    HTTPServer((HOST, PORT), DashboardHandler).serve_forever()
+    log.info("Dashboard server on http://%s:%d/", HOST, PORT)
+    ThreadingHTTPServer((HOST, PORT), DashboardHandler).serve_forever()

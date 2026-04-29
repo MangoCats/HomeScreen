@@ -29,7 +29,7 @@ python3 -m venv "$REPO_DIR/.venv"
 
 PORT=$(grep '^PORT' "$REPO_DIR/server.py" | awk -F= '{gsub(/ /,"",$2); print $2}')
 PI_IP=$(hostname -I | awk '{print $1}')
-DASHBOARD_URL="http://${PI_IP}:${PORT}/dashboard.png"
+DASHBOARD_URL="http://${PI_IP}:${PORT}/dashboard.mjpeg"
 
 # Preserve existing CAST_DEVICE and CAST_INTERVAL if already configured
 CAST_DEVICE=""
