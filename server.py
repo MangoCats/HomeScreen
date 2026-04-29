@@ -17,6 +17,16 @@ PORT = 2001
 MJPEG_BOUNDARY = "frame"
 MJPEG_INTERVAL = 30  # seconds between MJPEG frames
 
+# Served as-is; the browser on the Cast device handles MJPEG natively in <img>.
+_HTML = (
+    b"<!DOCTYPE html><html><head>"
+    b"<style>*{margin:0;padding:0}body{background:#000;overflow:hidden}"
+    b"img{display:block;width:100vw;height:100vh;object-fit:contain}</style>"
+    b"</head><body>"
+    b'<img src="/dashboard.mjpeg">'
+    b"</body></html>"
+)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
@@ -35,11 +45,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/dashboard.mjpeg":
             self._serve_mjpeg()
+        elif path == "/dashboard.html":
+            self._serve_html()
         elif path in ("/", "/dashboard.png"):
             self._serve_png()
         else:
             self.send_response(404)
             self.end_headers()
+
+    def _serve_html(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(_HTML)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(_HTML)
+        log.info("Served dashboard.html")
 
     def _serve_png(self):
         try:
