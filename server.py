@@ -5,6 +5,7 @@ import io
 import logging
 import time
 import traceback
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -31,9 +32,10 @@ log = logging.getLogger(__name__)
 
 
 def _sleep_until_next_minute(offset: float = 2.0) -> None:
-    """Sleep until `offset` seconds past the next minute boundary."""
-    elapsed = time.time() % 60
-    time.sleep((60 - elapsed) + offset)
+    """Sleep until `offset` seconds past the next local minute boundary."""
+    now = datetime.now()
+    seconds_remaining = 60 - now.second - now.microsecond / 1_000_000
+    time.sleep(seconds_remaining + offset)
 
 
 def _to_jpeg(png_bytes: bytes) -> bytes:
@@ -89,18 +91,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         log.info("MJPEG stream started")
         try:
+            # Push one frame immediately so the display isn't blank on connect.
+            self._push_mjpeg_frame()
+            # Then synchronise to minute boundaries: sleep first, then render.
+            # Generating after the sleep guarantees datetime.now() is already
+            # in the new minute when render_clock reads it.
             while True:
-                jpeg_bytes = _to_jpeg(dashboard.generate())
-                self.wfile.write(
-                    f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
-                    f"Content-Length: {len(jpeg_bytes)}\r\n\r\n".encode()
-                    + jpeg_bytes + b"\r\n"
-                )
-                self.wfile.flush()
-                log.info("MJPEG frame (%d bytes)", len(jpeg_bytes))
                 _sleep_until_next_minute()
+                self._push_mjpeg_frame()
         except Exception:
             log.info("MJPEG stream ended")
+
+    def _push_mjpeg_frame(self) -> None:
+        jpeg_bytes = _to_jpeg(dashboard.generate())
+        self.wfile.write(
+            f"--{MJPEG_BOUNDARY}\r\nContent-Type: image/jpeg\r\n"
+            f"Content-Length: {len(jpeg_bytes)}\r\n\r\n".encode()
+            + jpeg_bytes + b"\r\n"
+        )
+        self.wfile.flush()
+        log.info("MJPEG frame (%d bytes)", len(jpeg_bytes))
 
 
 if __name__ == "__main__":
