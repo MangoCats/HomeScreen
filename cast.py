@@ -75,8 +75,10 @@ if __name__ == "__main__":
                 tick = 0
             elif cast.app_id != DASHCAST_APP_ID:
                 # DashCast was killed (user dismissed, idle timeout, etc.)
+                cast.quit_app()
+                time.sleep(1)
                 cast.start_app(DASHCAST_APP_ID)
-                time.sleep(2)
+                time.sleep(3)
                 dashcast.load_url(DASHBOARD_HTML_URL)
                 log.info("Cast → %s (DashCast had stopped)", DASHBOARD_HTML_URL)
                 tick = 0
@@ -84,9 +86,14 @@ if __name__ == "__main__":
                 tick += 1
                 if tick >= RELOAD_EVERY:
                     # Webview can silently crash while DashCast app keeps running.
-                    # Periodically re-send load_url to recover without a full restart.
+                    # Full restart (not just load_url) ensures the webview is fresh.
+                    log.info("Periodic DashCast restart")
+                    cast.quit_app()
+                    time.sleep(1)
+                    cast.start_app(DASHCAST_APP_ID)
+                    time.sleep(3)
                     dashcast.load_url(DASHBOARD_HTML_URL)
-                    log.info("DashCast session active (reloaded URL)")
+                    log.info("Cast → %s (periodic restart)", DASHBOARD_HTML_URL)
                     tick = 0
                 else:
                     log.info("DashCast session active")
