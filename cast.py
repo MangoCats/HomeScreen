@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 DEVICE_NAME   = os.environ["CAST_DEVICE"]
 DASHBOARD_URL = os.environ["DASHBOARD_URL"]
 INTERVAL      = int(os.environ.get("CAST_INTERVAL", "55"))
+RELOAD_EVERY  = int(os.environ.get("CAST_RELOAD_EVERY", "10"))  # re-send load_url every N intervals
 
 # DashCast: a Cast receiver that opens a Chrome webview to any URL.
 # The HTML page embeds the MJPEG stream; Chrome handles multipart/x-mixed-replace
@@ -54,6 +55,7 @@ if __name__ == "__main__":
     cast = None
     browser = None
     dashcast = None
+    tick = 0
     while True:
         try:
             if cast is None:
@@ -70,14 +72,24 @@ if __name__ == "__main__":
                 time.sleep(3)
                 dashcast.load_url(DASHBOARD_HTML_URL)
                 log.info("Cast → %s", DASHBOARD_HTML_URL)
+                tick = 0
             elif cast.app_id != DASHCAST_APP_ID:
                 # DashCast was killed (user dismissed, idle timeout, etc.)
                 cast.start_app(DASHCAST_APP_ID)
                 time.sleep(2)
                 dashcast.load_url(DASHBOARD_HTML_URL)
                 log.info("Cast → %s (DashCast had stopped)", DASHBOARD_HTML_URL)
+                tick = 0
             else:
-                log.info("DashCast session active")
+                tick += 1
+                if tick >= RELOAD_EVERY:
+                    # Webview can silently crash while DashCast app keeps running.
+                    # Periodically re-send load_url to recover without a full restart.
+                    dashcast.load_url(DASHBOARD_HTML_URL)
+                    log.info("DashCast session active (reloaded URL)")
+                    tick = 0
+                else:
+                    log.info("DashCast session active")
         except Exception as exc:
             log.error("Cast failed: %s", exc)
             cast = None
