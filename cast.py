@@ -60,11 +60,19 @@ if __name__ == "__main__":
                 if browser is not None:
                     browser.stop_discovery()
                 cast, browser, dashcast = connect()
-            if cast.app_id != DASHCAST_APP_ID:
-                cast.start_app(DASHCAST_APP_ID)
-                time.sleep(2)  # wait for receiver to initialise
+                # Always (re-)load the URL on a fresh connection regardless of
+                # whether DashCast is already running from a previous session.
+                if cast.app_id != DASHCAST_APP_ID:
+                    cast.start_app(DASHCAST_APP_ID)
+                    time.sleep(2)  # wait for receiver to initialise
                 dashcast.load_url(DASHBOARD_HTML_URL)
                 log.info("Cast → %s", DASHBOARD_HTML_URL)
+            elif cast.app_id != DASHCAST_APP_ID:
+                # DashCast was killed (user dismissed, idle timeout, etc.)
+                cast.start_app(DASHCAST_APP_ID)
+                time.sleep(2)
+                dashcast.load_url(DASHBOARD_HTML_URL)
+                log.info("Cast → %s (DashCast had stopped)", DASHBOARD_HTML_URL)
             else:
                 log.info("DashCast session active")
         except Exception as exc:
