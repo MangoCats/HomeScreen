@@ -67,9 +67,9 @@ Runs `server.py` on port 2001. Two endpoints:
 
 - `GET /dashboard.png` — renders a fresh PNG on every request (useful for
   manual inspection)
-- `GET /dashboard.mjpeg` — holds the connection open and pushes a new JPEG
-  frame 2 seconds after each clock minute rolls over, so the displayed time
-  is never more than a few seconds stale
+- `GET /dashboard.mjpeg` — holds the connection open and pushes the cached
+  JPEG at 2 Hz. A background thread regenerates the frame 2 seconds after
+  each minute boundary; with 2 Hz streaming the display lag is at most 0.5 s
 
 If the moon image cannot be fetched (e.g. Home Assistant is unreachable), the
 server logs a warning and renders a clock-only frame rather than returning an
