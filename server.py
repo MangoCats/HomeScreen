@@ -4,6 +4,7 @@
 import logging
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse
 
 import dashboard
 
@@ -19,7 +20,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path not in ("/", "/dashboard.png"):
+        if urlparse(self.path).path not in ("/", "/dashboard.png"):
             self.send_response(404)
             self.end_headers()
             return

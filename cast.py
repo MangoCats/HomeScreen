@@ -25,8 +25,9 @@ def cast_once() -> None:
             return
         cast = chromecasts[0]
         cast.wait(timeout=10)
-        cast.media_controller.play_media(DASHBOARD_URL, "image/png")
-        log.info("Cast → %s", DASHBOARD_URL)
+        url = f"{DASHBOARD_URL}?t={int(time.time())}"
+        cast.media_controller.play_media(url, "image/png")
+        log.info("Cast → %s", url)
     finally:
         browser.stop_discovery()
 
