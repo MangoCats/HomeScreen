@@ -39,7 +39,7 @@ The script will:
 
 1. Create a Python virtual environment at `.venv/` and install dependencies
 2. Scan the local network for Cast devices and list their names
-3. Prompt for the Cast device name (saved to `homescreen.env` for future runs)
+3. Prompt for the Cast device name (saved to `homescreen.env` for future runs; `CAST_INTERVAL` is also preserved if already set)
 4. Write and enable two systemd services that start on every boot
 
 Re-run after any `git pull` to apply updates — the device name is preserved:
@@ -64,14 +64,16 @@ sudo systemctl stop homescreen-cast   # stop casting without stopping the server
 
 Runs `server.py` on port 2001. Responds to `GET /` and `GET /dashboard.png`
 with a freshly rendered PNG. `Cache-Control: no-store` ensures the Cast device
-always fetches a new frame.
+always fetches a new frame. If the moon image cannot be fetched (e.g. Home
+Assistant is unreachable), the server logs a warning and serves a clock-only
+image rather than returning an error.
 
 ### `homescreen-cast` — cast controller
 
-Runs `cast.py` in a loop. Every 55 seconds it discovers the configured Cast
-device by friendly name using zeroconf, calls `play_media` with the dashboard
-URL, then sleeps. Failures are logged and retried; the service restarts
-automatically if it crashes.
+Runs `cast.py` in a loop. Every `CAST_INTERVAL` seconds (default 55) it
+discovers the configured Cast device by friendly name using zeroconf, calls
+`play_media` with the dashboard URL, then sleeps. Failures are logged and
+retried; the service restarts automatically if it crashes.
 
 ## Runtime configuration (`homescreen.env`)
 

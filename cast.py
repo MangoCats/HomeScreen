@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Periodically casts the dashboard image to a Google Cast device."""
 
+import logging
 import os
 import time
-import logging
+
 import pychromecast
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -30,9 +31,10 @@ def cast_once() -> None:
         pychromecast.discovery.stop_discovery(browser)
 
 
-while True:
-    try:
-        cast_once()
-    except Exception as exc:
-        log.error("Cast failed: %s", exc)
-    time.sleep(INTERVAL)
+if __name__ == "__main__":
+    while True:
+        try:
+            cast_once()
+        except Exception as exc:
+            log.error("Cast failed: %s", exc)
+        time.sleep(INTERVAL)

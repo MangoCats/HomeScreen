@@ -31,10 +31,12 @@ PORT=$(grep '^PORT' "$REPO_DIR/server.py" | awk -F= '{gsub(/ /,"",$2); print $2}
 PI_IP=$(hostname -I | awk '{print $1}')
 DASHBOARD_URL="http://${PI_IP}:${PORT}/dashboard.png"
 
-# Preserve existing CAST_DEVICE if already configured
+# Preserve existing CAST_DEVICE and CAST_INTERVAL if already configured
 CAST_DEVICE=""
+CAST_INTERVAL=""
 if [[ -f "$ENV_FILE" ]]; then
     CAST_DEVICE=$(grep '^CAST_DEVICE=' "$ENV_FILE" | cut -d= -f2- || true)
+    CAST_INTERVAL=$(grep '^CAST_INTERVAL=' "$ENV_FILE" | cut -d= -f2- || true)
 fi
 
 if [[ -z "$CAST_DEVICE" ]]; then
@@ -53,11 +55,13 @@ PYEOF
     read -rp "Enter device name: " CAST_DEVICE
 fi
 
+: "${CAST_INTERVAL:=55}"
+
 echo "==> Writing ${ENV_FILE}..."
 cat > "$ENV_FILE" <<EOF
 CAST_DEVICE=${CAST_DEVICE}
 DASHBOARD_URL=${DASHBOARD_URL}
-CAST_INTERVAL=55
+CAST_INTERVAL=${CAST_INTERVAL}
 EOF
 
 # ── systemd unit: image server ────────────────────────────────────────────────

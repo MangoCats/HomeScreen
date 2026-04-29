@@ -2,12 +2,15 @@
 """Dashboard image generator for Google Home screen display."""
 
 import io
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
+
+log = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -35,7 +38,7 @@ FONT_CANDIDATES = [
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def load_font(size: int) -> ImageFont.FreeTypeFont:
+def load_font(size: int) -> ImageFont.ImageFont:
     for path in FONT_CANDIDATES:
         if Path(path).exists():
             return ImageFont.truetype(path, size)
@@ -51,8 +54,13 @@ def fetch_moon() -> Image.Image:
 
 def render_moon(canvas: Image.Image) -> None:
     """Right side, centered vertically, 80 % of screen height."""
+    try:
+        moon_img = fetch_moon()
+    except Exception as exc:
+        log.warning("Moon fetch failed, skipping: %s", exc)
+        return
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
-    moon_img = fetch_moon().resize((moon_px, moon_px), Image.LANCZOS)
+    moon_img = moon_img.resize((moon_px, moon_px), Image.LANCZOS)
     x = SCREEN_W - moon_px - MOON_MARGIN_RIGHT
     y = (SCREEN_H - moon_px) // 2
     canvas.paste(moon_img, (x, y), moon_img)
@@ -72,14 +80,16 @@ def render_clock(canvas: Image.Image) -> None:
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
-def generate(output_path: str = "dashboard.png") -> None:
+def generate() -> bytes:
     canvas = Image.new("RGB", (SCREEN_W, SCREEN_H), BACKGROUND)
     render_moon(canvas)
     render_clock(canvas)
-    canvas.save(output_path)
+    buf = io.BytesIO()
+    canvas.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "dashboard.png"
-    generate(out)
+    Path(out).write_bytes(generate())
     print(f"Saved → {out}")

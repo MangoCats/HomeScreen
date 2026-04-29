@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """HTTP server that serves a freshly rendered dashboard image on every request."""
 
-import io
 import logging
 import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -26,14 +25,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            buf = io.BytesIO()
-            canvas = __import__("PIL").Image.new(
-                "RGB", (dashboard.SCREEN_W, dashboard.SCREEN_H), dashboard.BACKGROUND
-            )
-            dashboard.render_moon(canvas)
-            dashboard.render_clock(canvas)
-            canvas.save(buf, format="PNG")
-            image_bytes = buf.getvalue()
+            image_bytes = dashboard.generate()
 
             self.send_response(200)
             self.send_header("Content-Type", "image/png")
