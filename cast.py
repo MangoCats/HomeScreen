@@ -20,7 +20,7 @@ INTERVAL      = int(os.environ.get("CAST_INTERVAL", "55"))
 # The HTML page embeds the MJPEG stream; Chrome handles multipart/x-mixed-replace
 # natively in <img>, so the display stays live without triggering the idle timeout.
 DASHCAST_APP_ID   = "5C3F0A3C"
-DASHCAST_NAMESPACE = "urn:x-cast:com.steelhousemedia.dashcast"
+DASHCAST_NAMESPACE = "urn:x-cast:es.offd.dashcast"
 
 # Derive the HTML page URL from the configured host:port
 _parsed = urlparse(DASHBOARD_URL)
