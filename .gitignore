@@ -1,0 +1,4 @@
+dashboard.png
+__pycache__/
+*.pyc
+.venv/
