@@ -32,10 +32,22 @@ log = logging.getLogger(__name__)
 
 
 def _sleep_until_next_minute(offset: float = 2.0) -> None:
-    """Sleep until `offset` seconds past the next local minute boundary."""
+    """Sleep until `offset` seconds past the next local minute boundary.
+
+    Polls the clock in the final seconds rather than relying on sleep accuracy,
+    so the frame is never generated before the minute has actually rolled over.
+    """
     now = datetime.now()
-    seconds_remaining = 60 - now.second - now.microsecond / 1_000_000
-    time.sleep(seconds_remaining + offset)
+    current_minute = now.minute
+    # Bulk sleep until ~2 s before the expected boundary
+    bulk = 60 - now.second - now.microsecond / 1_000_000 - 2
+    if bulk > 0:
+        time.sleep(bulk)
+    # Poll at 50 ms resolution until the minute ticks over
+    while datetime.now().minute == current_minute:
+        time.sleep(0.05)
+    # Minute has rolled; now wait the offset before the caller generates
+    time.sleep(offset)
 
 
 def _to_jpeg(png_bytes: bytes) -> bytes:
