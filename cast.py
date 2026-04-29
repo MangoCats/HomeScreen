@@ -60,12 +60,14 @@ if __name__ == "__main__":
                 if browser is not None:
                     browser.stop_discovery()
                 cast, browser, dashcast = connect()
-                # Always start_app + sleep before load_url. When DashCast is
-                # already running, pychromecast no-ops the launch, but the
-                # sleep is still needed — without it the load_url message
-                # arrives before the receiver is ready and is silently dropped.
+                # Quit whatever is running so DashCast always starts fresh.
+                # load_url is silently dropped when sent to an already-running
+                # DashCast instance because the controller namespace isn't
+                # active until after a new launch cycle completes.
+                cast.quit_app()
+                time.sleep(1)
                 cast.start_app(DASHCAST_APP_ID)
-                time.sleep(2)
+                time.sleep(3)
                 dashcast.load_url(DASHBOARD_HTML_URL)
                 log.info("Cast → %s", DASHBOARD_HTML_URL)
             elif cast.app_id != DASHCAST_APP_ID:
