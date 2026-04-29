@@ -44,7 +44,7 @@ if [[ -z "$CAST_DEVICE" ]]; then
     "$REPO_DIR/.venv/bin/python3" <<'PYEOF'
 import pychromecast
 chromecasts, browser = pychromecast.get_chromecasts(timeout=5)
-pychromecast.discovery.stop_discovery(browser)
+browser.stop_discovery()
 names = sorted(cc.cast_info.friendly_name for cc in chromecasts)
 if names:
     for name in names:

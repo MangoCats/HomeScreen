@@ -28,7 +28,7 @@ def cast_once() -> None:
         cast.media_controller.play_media(DASHBOARD_URL, "image/png")
         log.info("Cast → %s", DASHBOARD_URL)
     finally:
-        pychromecast.discovery.stop_discovery(browser)
+        browser.stop_discovery()
 
 
 if __name__ == "__main__":
