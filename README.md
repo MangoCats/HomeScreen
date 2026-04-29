@@ -68,8 +68,8 @@ Runs `server.py` on port 2001. Two endpoints:
 - `GET /dashboard.png` — renders a fresh PNG on every request (useful for
   manual inspection)
 - `GET /dashboard.mjpeg` — holds the connection open and pushes a new JPEG
-  frame every `MJPEG_INTERVAL` seconds (default 30), keeping the Cast session
-  in a continuous `PLAYING` state
+  frame 2 seconds after each clock minute rolls over, so the displayed time
+  is never more than a few seconds stale
 
 If the moon image cannot be fetched (e.g. Home Assistant is unreachable), the
 server logs a warning and renders a clock-only frame rather than returning an
@@ -116,11 +116,10 @@ All layout constants are at the top of `dashboard.py`:
 | `CLOCK_MARGIN_LEFT` | Pixels from left edge | `24` |
 | `FONT_CANDIDATES` | Ordered list of bold sans-serif font paths to try | DejaVu → Liberation → Noto → FreeSans |
 
-Two server constants are defined in `server.py`:
+The server port is defined once in `server.py`:
 
 ```python
 PORT = 2001
-MJPEG_INTERVAL = 30  # seconds between MJPEG frames
 ```
 
 After changing any value, restart the affected service:

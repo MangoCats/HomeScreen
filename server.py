@@ -15,7 +15,6 @@ import dashboard
 HOST = "0.0.0.0"
 PORT = 2001
 MJPEG_BOUNDARY = "frame"
-MJPEG_INTERVAL = 30  # seconds between MJPEG frames
 
 # Served as-is; the browser on the Cast device handles MJPEG natively in <img>.
 _HTML = (
@@ -29,6 +28,12 @@ _HTML = (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
+
+
+def _sleep_until_next_minute(offset: float = 2.0) -> None:
+    """Sleep until `offset` seconds past the next minute boundary."""
+    elapsed = time.time() % 60
+    time.sleep((60 - elapsed) + offset)
 
 
 def _to_jpeg(png_bytes: bytes) -> bytes:
@@ -93,7 +98,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 )
                 self.wfile.flush()
                 log.info("MJPEG frame (%d bytes)", len(jpeg_bytes))
-                time.sleep(MJPEG_INTERVAL)
+                _sleep_until_next_minute()
         except Exception:
             log.info("MJPEG stream ended")
 
