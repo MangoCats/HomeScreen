@@ -23,10 +23,8 @@ MOON_URL = "http://homeassistant:1969/moon.png"
 CLOCK_COLOR = (255, 255, 255)
 CLOCK_FONT_RATIO = 0.20   # font size as fraction of screen height
 CLOCK_MARGIN_LEFT = 24
-CLOCK_MARGIN_BOTTOM = 16
 
 MOON_HEIGHT_RATIO = 0.80  # moon diameter as fraction of screen height
-MOON_MARGIN_RIGHT = 0     # pixels from right edge
 
 # Bold sans-serif font candidates (first match wins)
 FONT_CANDIDATES = [
@@ -53,7 +51,7 @@ def fetch_moon() -> Image.Image:
 # ── Modules ──────────────────────────────────────────────────────────────────
 
 def render_moon(canvas: Image.Image) -> None:
-    """Right side, centered vertically, 80 % of screen height."""
+    """Right side; equal margin on top, bottom, and right."""
     try:
         moon_img = fetch_moon()
     except Exception as exc:
@@ -61,8 +59,9 @@ def render_moon(canvas: Image.Image) -> None:
         return
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
     moon_img = moon_img.resize((moon_px, moon_px), Image.LANCZOS)
-    x = SCREEN_W - moon_px - MOON_MARGIN_RIGHT
-    y = (SCREEN_H - moon_px) // 2
+    margin = (SCREEN_H - moon_px) // 2
+    x = SCREEN_W - moon_px - margin
+    y = margin
     canvas.paste(moon_img, (x, y), moon_img)
 
 
@@ -74,8 +73,10 @@ def render_clock(canvas: Image.Image) -> None:
     time_str = datetime.now().strftime("%-I:%M")
     bbox = draw.textbbox((0, 0), time_str, font=font)
     text_h = bbox[3] - bbox[1]
+    moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
+    margin_bottom = (SCREEN_H - moon_px) // 4  # half the moon's bottom gap
     x = CLOCK_MARGIN_LEFT
-    y = SCREEN_H - text_h - CLOCK_MARGIN_BOTTOM
+    y = SCREEN_H - text_h - margin_bottom
     draw.text((x, y), time_str, font=font, fill=CLOCK_COLOR)
 
 # ── Entry point ──────────────────────────────────────────────────────────────

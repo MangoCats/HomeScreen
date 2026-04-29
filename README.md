@@ -8,7 +8,7 @@ so the clock and moon phase are always current.
 
 | Module | Position | Size |
 |--------|----------|------|
-| Moon phase image | Right side, vertically centered | 80% of screen height |
+| Moon phase image | Right side, equal gap on top, bottom, and right | 80% of screen height |
 | Clock (12-hour, e.g. `3:45`) | Left-justified, bottom | 20% of screen height, bold sans-serif |
 
 The moon phase image is fetched from a local Home Assistant instance on every
@@ -98,11 +98,9 @@ All layout constants are at the top of `dashboard.py`:
 | `BACKGROUND` | RGB background colour | `(0, 0, 0)` |
 | `MOON_URL` | Moon phase image source | `http://homeassistant:1969/moon.png` |
 | `MOON_HEIGHT_RATIO` | Moon diameter as fraction of screen height | `0.80` |
-| `MOON_MARGIN_RIGHT` | Pixels between moon and right edge | `0` |
 | `CLOCK_COLOR` | RGB clock colour | `(255, 255, 255)` |
 | `CLOCK_FONT_RATIO` | Font size as fraction of screen height | `0.20` |
 | `CLOCK_MARGIN_LEFT` | Pixels from left edge | `24` |
-| `CLOCK_MARGIN_BOTTOM` | Pixels above bottom edge | `16` |
 | `FONT_CANDIDATES` | Ordered list of bold sans-serif font paths to try | DejaVu → Liberation → Noto → FreeSans |
 
 The server port is defined once in `server.py`:
