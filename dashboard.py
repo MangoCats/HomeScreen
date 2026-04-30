@@ -92,7 +92,7 @@ def render_clock_and_date(canvas: Image.Image) -> None:
     time_str = datetime.now().strftime("%-I:%M")
     clock_bbox = draw.textbbox((0, 0), time_str, font=clock_font)
     clock_h = clock_bbox[3] - clock_bbox[1]
-    gap = DATE_FONT_SIZE // 5  # ~8 px — standard leading for 38 px text
+    gap = DATE_FONT_SIZE // 5 + 16  # ~8 px leading + 16 px additional offset
     clock_y = date_y - gap - clock_h
 
     draw.text((CLOCK_MARGIN_LEFT, clock_y), time_str, font=clock_font, fill=CLOCK_COLOR)
