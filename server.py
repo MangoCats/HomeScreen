@@ -63,17 +63,18 @@ def _sleep_until_next_minute(offset: float = 2.0) -> None:
 def _refresh_loop() -> None:
     """Background thread: regenerate the dashboard JPEG once per minute."""
     global _cached_frame
-    frame = _to_jpeg(dashboard.generate())
-    with _frame_lock:
-        _cached_frame = frame
-    log.info("Initial frame (%d bytes)", len(frame))
     while True:
+        try:
+            log.info("Rendering at %s", datetime.now().strftime("%H:%M:%S.%f"))
+            frame = _to_jpeg(dashboard.generate())
+            with _frame_lock:
+                _cached_frame = frame
+            log.info("Frame updated (%d bytes)", len(frame))
+        except Exception:
+            log.error("Frame render failed:\n%s", traceback.format_exc())
+            time.sleep(5)
+            continue
         _sleep_until_next_minute()
-        log.info("Rendering at %s", datetime.now().strftime("%H:%M:%S.%f"))
-        frame = _to_jpeg(dashboard.generate())
-        with _frame_lock:
-            _cached_frame = frame
-        log.info("Frame updated (%d bytes)", len(frame))
 
 
 class DashboardHandler(BaseHTTPRequestHandler):

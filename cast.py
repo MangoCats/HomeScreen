@@ -36,6 +36,24 @@ class DashCastController(BaseController):
         self.send_message({"url": url, "force": True})
 
 
+def _launch_dashcast(cast: pychromecast.Chromecast, dashcast: DashCastController) -> None:
+    """Quit current app, start DashCast, and load the URL — muted throughout to suppress sounds."""
+    prev_muted = cast.status.volume_muted if cast.status else False
+    cast.set_volume_muted(True)
+    try:
+        cast.quit_app()
+        time.sleep(1)
+        cast.start_app(DASHCAST_APP_ID)
+        time.sleep(3)
+        dashcast.load_url(DASHBOARD_HTML_URL)
+        time.sleep(1)  # let page begin loading before unmuting
+    finally:
+        try:
+            cast.set_volume_muted(prev_muted)
+        except Exception:
+            pass
+
+
 def connect() -> tuple[pychromecast.Chromecast, object, DashCastController]:
     chromecasts, browser = pychromecast.get_listed_chromecasts(
         friendly_names=[DEVICE_NAME]
@@ -44,7 +62,9 @@ def connect() -> tuple[pychromecast.Chromecast, object, DashCastController]:
         browser.stop_discovery()
         raise RuntimeError(f"Device '{DEVICE_NAME}' not found on network")
     cast = chromecasts[0]
-    cast.wait(timeout=10)
+    if not cast.wait(timeout=10):
+        browser.stop_discovery()
+        raise RuntimeError(f"Timed out connecting to '{DEVICE_NAME}'")
     dashcast = DashCastController()
     cast.register_handler(dashcast)
     log.info("Connected to '%s'", DEVICE_NAME)
@@ -60,26 +80,18 @@ if __name__ == "__main__":
         try:
             if cast is None:
                 if browser is not None:
-                    browser.stop_discovery()
+                    try:
+                        browser.stop_discovery()
+                    except Exception:
+                        pass
+                    browser = None
                 cast, browser, dashcast = connect()
-                # Quit whatever is running so DashCast always starts fresh.
-                # load_url is silently dropped when sent to an already-running
-                # DashCast instance because the controller namespace isn't
-                # active until after a new launch cycle completes.
-                cast.quit_app()
-                time.sleep(1)
-                cast.start_app(DASHCAST_APP_ID)
-                time.sleep(3)
-                dashcast.load_url(DASHBOARD_HTML_URL)
+                _launch_dashcast(cast, dashcast)
                 log.info("Cast → %s", DASHBOARD_HTML_URL)
                 tick = 0
             elif cast.app_id != DASHCAST_APP_ID:
                 # DashCast was killed (user dismissed, idle timeout, etc.)
-                cast.quit_app()
-                time.sleep(1)
-                cast.start_app(DASHCAST_APP_ID)
-                time.sleep(3)
-                dashcast.load_url(DASHBOARD_HTML_URL)
+                _launch_dashcast(cast, dashcast)
                 log.info("Cast → %s (DashCast had stopped)", DASHBOARD_HTML_URL)
                 tick = 0
             else:
@@ -87,12 +99,7 @@ if __name__ == "__main__":
                 if tick >= RELOAD_EVERY:
                     # Webview can silently crash while DashCast app keeps running.
                     # Full restart (not just load_url) ensures the webview is fresh.
-                    log.info("Periodic DashCast restart")
-                    cast.quit_app()
-                    time.sleep(1)
-                    cast.start_app(DASHCAST_APP_ID)
-                    time.sleep(3)
-                    dashcast.load_url(DASHBOARD_HTML_URL)
+                    _launch_dashcast(cast, dashcast)
                     log.info("Cast → %s (periodic restart)", DASHBOARD_HTML_URL)
                     tick = 0
                 else:
