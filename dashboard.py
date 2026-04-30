@@ -23,21 +23,28 @@ MOON_URL = "http://homeassistant:1969/moon.png"
 CLOCK_COLOR = (255, 255, 255)
 CLOCK_FONT_RATIO = 0.20   # font size as fraction of screen height
 CLOCK_MARGIN_LEFT = 24
+DATE_FONT_SIZE = 38
 
 MOON_HEIGHT_RATIO = 0.80  # moon diameter as fraction of screen height
 
-# Bold sans-serif font candidates (first match wins)
-FONT_CANDIDATES = [
+# Font candidates — bold and regular (first match wins)
+FONT_CANDIDATES_BOLD = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
     "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
 ]
+FONT_CANDIDATES_REGULAR = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+]
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def load_font(size: int) -> ImageFont.ImageFont:
-    for path in FONT_CANDIDATES:
+def load_font(size: int, bold: bool = True) -> ImageFont.ImageFont:
+    for path in (FONT_CANDIDATES_BOLD if bold else FONT_CANDIDATES_REGULAR):
         if Path(path).exists():
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
@@ -65,26 +72,38 @@ def render_moon(canvas: Image.Image) -> None:
     canvas.paste(moon_img, (x, y), moon_img)
 
 
-def render_clock(canvas: Image.Image) -> None:
-    """Bold sans-serif, 20 % of screen height, left-justified at the bottom."""
-    font_px = int(SCREEN_H * CLOCK_FONT_RATIO)
-    font = load_font(font_px)
+def render_clock_and_date(canvas: Image.Image) -> None:
+    """Clock (bold, 20% height) above date line (regular, 38 px), both left-justified."""
     draw = ImageDraw.Draw(canvas)
-    time_str = datetime.now().strftime("%-I:%M")
-    bbox = draw.textbbox((0, 0), time_str, font=font)
-    text_h = bbox[3] - bbox[1]
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
     margin_bottom = (SCREEN_H - moon_px) // 4  # half the moon's bottom gap
-    x = CLOCK_MARGIN_LEFT
-    y = SCREEN_H - text_h - margin_bottom
-    draw.text((x, y), time_str, font=font, fill=CLOCK_COLOR)
+    bottom = SCREEN_H - margin_bottom           # y-coordinate of the shared baseline
+
+    # Date line — sits at the bottom
+    date_font = load_font(DATE_FONT_SIZE, bold=False)
+    date_str = datetime.now().strftime("%A %B %-d")
+    date_bbox = draw.textbbox((0, 0), date_str, font=date_font)
+    date_h = date_bbox[3] - date_bbox[1]
+    date_y = bottom - date_h
+
+    # Clock — sits above the date line with one date-font line-gap of spacing
+    clock_font_px = int(SCREEN_H * CLOCK_FONT_RATIO)
+    clock_font = load_font(clock_font_px, bold=True)
+    time_str = datetime.now().strftime("%-I:%M")
+    clock_bbox = draw.textbbox((0, 0), time_str, font=clock_font)
+    clock_h = clock_bbox[3] - clock_bbox[1]
+    gap = DATE_FONT_SIZE // 5  # ~8 px — standard leading for 38 px text
+    clock_y = date_y - gap - clock_h
+
+    draw.text((CLOCK_MARGIN_LEFT, clock_y), time_str, font=clock_font, fill=CLOCK_COLOR)
+    draw.text((CLOCK_MARGIN_LEFT, date_y), date_str, font=date_font, fill=CLOCK_COLOR)
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 def generate() -> bytes:
     canvas = Image.new("RGB", (SCREEN_W, SCREEN_H), BACKGROUND)
     render_moon(canvas)
-    render_clock(canvas)
+    render_clock_and_date(canvas)
     buf = io.BytesIO()
     canvas.save(buf, format="PNG")
     return buf.getvalue()
