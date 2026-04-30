@@ -63,8 +63,7 @@ def connect() -> tuple[pychromecast.Chromecast, object, DashCastController]:
         raise RuntimeError(f"Device '{DEVICE_NAME}' not found on network")
     cast = chromecasts[0]
     if not cast.wait(timeout=10):
-        browser.stop_discovery()
-        raise RuntimeError(f"Timed out connecting to '{DEVICE_NAME}'")
+        log.warning("Timed out waiting for status from '%s', proceeding anyway", DEVICE_NAME)
     dashcast = DashCastController()
     cast.register_handler(dashcast)
     log.info("Connected to '%s'", DEVICE_NAME)
