@@ -67,7 +67,7 @@ def fetch_balance() -> list:
         if "error" in data:
             return ["Balance not available"]
         bal = data["balance"]["available"]
-        items = [f"${bal:,.2f}"]
+        items = [{"text": f"${bal:,.2f}", "amount": bal}]
         for tx in data.get("transactions", []):
             items.append({
                 "date":   tx["date"][5:],
@@ -128,7 +128,7 @@ def render_clock_and_date(canvas: Image.Image) -> int:
 def render_balance(canvas: Image.Image, clock_y: int) -> None:
     """Balance and transactions, top-left; same font/margins as date display."""
     draw = ImageDraw.Draw(canvas)
-    bal_font = load_font(DATE_FONT_SIZE, bold=False)
+    bal_font = load_font(DATE_FONT_SIZE, bold=True)
     tx_font  = load_font(DATE_FONT_SIZE // 2, bold=False)
 
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
@@ -151,6 +151,9 @@ def render_balance(canvas: Image.Image, clock_y: int) -> None:
             break
         if isinstance(item, str):
             draw.text((CLOCK_MARGIN_LEFT, y), item, font=font, fill=CLOCK_COLOR)
+        elif "rest" not in item:
+            bal_color = (255, 60, 60) if item["amount"] < 50 else (60, 255, 60) if item["amount"] > 1000 else CLOCK_COLOR
+            draw.text((CLOCK_MARGIN_LEFT, y), item["text"], font=font, fill=bal_color)
         else:
             date_color = (255, 60, 60) if item["amount"] < 0 else (60, 255, 60)
             draw.text((CLOCK_MARGIN_LEFT, y), item["date"], font=font, fill=date_color)
