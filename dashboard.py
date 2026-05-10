@@ -19,6 +19,7 @@ SCREEN_H = 600
 BACKGROUND = (0, 0, 0)
 
 MOON_URL = "http://homeassistant:1969/moon.png"
+BAL_URL  = "http://localhost:8765"
 
 CLOCK_COLOR = (255, 255, 255)
 CLOCK_FONT_RATIO = 0.20   # font size as fraction of screen height
@@ -55,6 +56,24 @@ def fetch_moon() -> Image.Image:
     resp.raise_for_status()
     return Image.open(io.BytesIO(resp.content)).convert("RGBA")
 
+
+def fetch_balance() -> list[str]:
+    """Return lines to display: balance then transactions, or error message."""
+    try:
+        resp = requests.get(BAL_URL, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            return ["Balance not available"]
+        bal = data["balance"]["available"]
+        lines = [f"${bal:,.2f}"]
+        for tx in data.get("transactions", []):
+            lines.append(f"{tx['date']}  {tx['amount']:,.2f}  {tx['description']}")
+        return lines
+    except Exception as exc:
+        log.warning("Balance fetch failed: %s", exc)
+        return ["Balance not available"]
+
 # ── Modules ──────────────────────────────────────────────────────────────────
 
 def render_moon(canvas: Image.Image) -> None:
@@ -72,8 +91,9 @@ def render_moon(canvas: Image.Image) -> None:
     canvas.paste(moon_img, (x, y), moon_img)
 
 
-def render_clock_and_date(canvas: Image.Image) -> None:
-    """Clock (bold, 20% height) above date line (regular, 38 px), both left-justified."""
+def render_clock_and_date(canvas: Image.Image) -> int:
+    """Clock (bold, 20% height) above date line (regular, 38 px), both left-justified.
+    Returns clock_y so render_balance can stop one line above it."""
     draw = ImageDraw.Draw(canvas)
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
     margin_bottom = (SCREEN_H - moon_px) // 4  # half the moon's bottom gap
@@ -97,13 +117,37 @@ def render_clock_and_date(canvas: Image.Image) -> None:
 
     draw.text((CLOCK_MARGIN_LEFT, clock_y), time_str, font=clock_font, fill=CLOCK_COLOR)
     draw.text((CLOCK_MARGIN_LEFT, date_y), date_str, font=date_font, fill=CLOCK_COLOR)
+    return clock_y
+
+
+def render_balance(canvas: Image.Image, clock_y: int) -> None:
+    """Balance and transactions, top-left; same font/margins as date display."""
+    draw = ImageDraw.Draw(canvas)
+    font = load_font(DATE_FONT_SIZE, bold=False)
+
+    moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
+    top_margin = (SCREEN_H - moon_px) // 4  # mirrors the bottom margin used by date/clock
+
+    sample_bbox = draw.textbbox((0, 0), "Ay", font=font)
+    line_h = sample_bbox[3] - sample_bbox[1]
+    line_stride = line_h + DATE_FONT_SIZE // 5
+
+    lines = fetch_balance()
+    y = top_margin
+    for line in lines:
+        # stop when there would be less than one full blank line above the clock
+        if y + line_h + line_stride > clock_y:
+            break
+        draw.text((CLOCK_MARGIN_LEFT, y), line, font=font, fill=CLOCK_COLOR)
+        y += line_stride
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 def generate() -> bytes:
     canvas = Image.new("RGB", (SCREEN_W, SCREEN_H), BACKGROUND)
     render_moon(canvas)
-    render_clock_and_date(canvas)
+    clock_y = render_clock_and_date(canvas)
+    render_balance(canvas, clock_y)
     buf = io.BytesIO()
     canvas.save(buf, format="PNG")
     return buf.getvalue()
