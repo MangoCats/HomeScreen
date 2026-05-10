@@ -19,7 +19,7 @@ SCREEN_H = 600
 BACKGROUND = (0, 0, 0)
 
 MOON_URL = "http://homeassistant:1969/moon.png"
-BAL_URL  = "http://localhost:8765"
+BAL_URL  = "http://homeassistant:8765/account.json"
 
 CLOCK_COLOR = (255, 255, 255)
 CLOCK_FONT_RATIO = 0.20   # font size as fraction of screen height
