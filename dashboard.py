@@ -68,7 +68,7 @@ def fetch_balance() -> list[str]:
         bal = data["balance"]["available"]
         lines = [f"${bal:,.2f}"]
         for tx in data.get("transactions", []):
-            lines.append(f"{tx['date']}  {tx['amount']:,.2f}  {tx['description']}")
+            lines.append(f"{tx['date'][5:]}  {tx['amount']:,.2f}  {tx['description']}")
         return lines
     except Exception as exc:
         log.warning("Balance fetch failed: %s", exc)
@@ -142,7 +142,7 @@ def render_balance(canvas: Image.Image, clock_y: int) -> None:
     for i, line in enumerate(lines):
         font   = bal_font if i == 0 else tx_font
         lh, ls = (bal_h, bal_stride) if i == 0 else (tx_h, tx_stride)
-        if y + lh + ls > clock_y:
+        if y + lh + lh > clock_y:
             break
         draw.text((CLOCK_MARGIN_LEFT, y), line, font=font, fill=CLOCK_COLOR)
         y += ls
