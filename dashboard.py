@@ -60,7 +60,7 @@ def fetch_moon() -> Image.Image:
 def fetch_balance() -> list[str]:
     """Return lines to display: balance then transactions, or error message."""
     try:
-        resp = requests.get(BAL_URL, timeout=5)
+        resp = requests.get(BAL_URL, timeout=15)
         resp.raise_for_status()
         data = resp.json()
         if "error" in data:
@@ -123,23 +123,29 @@ def render_clock_and_date(canvas: Image.Image) -> int:
 def render_balance(canvas: Image.Image, clock_y: int) -> None:
     """Balance and transactions, top-left; same font/margins as date display."""
     draw = ImageDraw.Draw(canvas)
-    font = load_font(DATE_FONT_SIZE, bold=False)
+    bal_font = load_font(DATE_FONT_SIZE, bold=False)
+    tx_font  = load_font(DATE_FONT_SIZE // 2, bold=False)
 
     moon_px = int(SCREEN_H * MOON_HEIGHT_RATIO)
     top_margin = (SCREEN_H - moon_px) // 4  # mirrors the bottom margin used by date/clock
 
-    sample_bbox = draw.textbbox((0, 0), "Ay", font=font)
-    line_h = sample_bbox[3] - sample_bbox[1]
-    line_stride = line_h + DATE_FONT_SIZE // 5
+    def line_metrics(font):
+        bb = draw.textbbox((0, 0), "Ay", font=font)
+        h = bb[3] - bb[1]
+        return h, h + h // 5
+
+    bal_h,  bal_stride = line_metrics(bal_font)
+    tx_h,   tx_stride  = line_metrics(tx_font)
 
     lines = fetch_balance()
     y = top_margin
-    for line in lines:
-        # stop when there would be less than one full blank line above the clock
-        if y + line_h + line_stride > clock_y:
+    for i, line in enumerate(lines):
+        font   = bal_font if i == 0 else tx_font
+        lh, ls = (bal_h, bal_stride) if i == 0 else (tx_h, tx_stride)
+        if y + lh + ls > clock_y:
             break
         draw.text((CLOCK_MARGIN_LEFT, y), line, font=font, fill=CLOCK_COLOR)
-        y += line_stride
+        y += ls
 
 # ── Entry point ──────────────────────────────────────────────────────────────
 
