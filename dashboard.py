@@ -57,8 +57,9 @@ def fetch_moon() -> Image.Image:
     return Image.open(io.BytesIO(resp.content)).convert("RGBA")
 
 
-def fetch_balance() -> list[str]:
-    """Return lines to display: balance then transactions, or error message."""
+def fetch_balance() -> list:
+    """Return items to display.  First item is a plain string (balance or error).
+    Subsequent items are dicts: {date, rest, amount} for colored rendering."""
     try:
         resp = requests.get(BAL_URL, timeout=15)
         resp.raise_for_status()
@@ -66,10 +67,14 @@ def fetch_balance() -> list[str]:
         if "error" in data:
             return ["Balance not available"]
         bal = data["balance"]["available"]
-        lines = [f"${bal:,.2f}"]
+        items = [f"${bal:,.2f}"]
         for tx in data.get("transactions", []):
-            lines.append(f"{tx['date'][5:]}  {tx['amount']:,.2f}  {tx['description']}")
-        return lines
+            items.append({
+                "date":   tx["date"][5:],
+                "rest":   f"  {tx['amount']:,.2f}  {tx['description']}",
+                "amount": tx["amount"],
+            })
+        return items
     except Exception as exc:
         log.warning("Balance fetch failed: %s", exc)
         return ["Balance not available"]
@@ -137,14 +142,20 @@ def render_balance(canvas: Image.Image, clock_y: int) -> None:
     bal_h,  bal_stride = line_metrics(bal_font)
     tx_h,   tx_stride  = line_metrics(tx_font)
 
-    lines = fetch_balance()
+    items = fetch_balance()
     y = top_margin
-    for i, line in enumerate(lines):
+    for i, item in enumerate(items):
         font   = bal_font if i == 0 else tx_font
         lh, ls = (bal_h, bal_stride) if i == 0 else (tx_h, tx_stride)
         if y + lh + lh > clock_y:
             break
-        draw.text((CLOCK_MARGIN_LEFT, y), line, font=font, fill=CLOCK_COLOR)
+        if isinstance(item, str):
+            draw.text((CLOCK_MARGIN_LEFT, y), item, font=font, fill=CLOCK_COLOR)
+        else:
+            date_color = (255, 60, 60) if item["amount"] < 0 else (60, 255, 60)
+            draw.text((CLOCK_MARGIN_LEFT, y), item["date"], font=font, fill=date_color)
+            date_w = draw.textbbox((0, 0), item["date"], font=font)[2]
+            draw.text((CLOCK_MARGIN_LEFT + date_w, y), item["rest"], font=font, fill=CLOCK_COLOR)
         y += ls
 
 # ── Entry point ──────────────────────────────────────────────────────────────
